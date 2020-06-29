@@ -2,7 +2,7 @@ from time import time, sleep
 import hashlib
 import hmac
 import requests
-import json
+from yapic import json
 import base64
 import logging
 from decimal import Decimal
@@ -16,6 +16,7 @@ from cryptofeed.standards import pair_std_to_exchange, pair_exchange_to_std, nor
 
 
 LOG = logging.getLogger('rest')
+RATE_LIMIT_SLEEP = 0.5
 
 
 # https://docs.gemini.com/rest-api/#introduction
@@ -95,7 +96,7 @@ class Gemini(API):
                 'feed': self.ID,
                 'bid': Decimal(data['bid']),
                 'ask': Decimal(data['ask'])
-               }
+                }
 
     def l2_book(self, symbol: str, retry=None, retry_wait=0):
         sym = pair_std_to_exchange(symbol, self.ID)
@@ -145,7 +146,7 @@ class Gemini(API):
             if not start and not end:
                 break
             # GEMINI rate limits to 120 requests a minute
-            sleep(0.5)
+            sleep(RATE_LIMIT_SLEEP)
 
     # Trading APIs
     def place_order(self, symbol: str, side: str, order_type: str, amount: Decimal, price=None, client_order_id=None, options=None):
@@ -212,4 +213,4 @@ class Gemini(API):
             entry['currency']: {
                 'total': Decimal(entry['amount']),
                 'available': Decimal(entry['available'])
-            } for entry in data }
+            } for entry in data}

@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2017-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2017-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
@@ -17,6 +17,7 @@ import yaml
 from cryptofeed.standards import load_exchange_pair_mapping
 
 LOG = logging.getLogger('rest')
+
 
 def request_retry(exchange, retry, retry_wait):
     """

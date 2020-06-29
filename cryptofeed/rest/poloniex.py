@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2017-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2017-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
@@ -128,25 +128,25 @@ class Poloniex(API):
                 'feed': self.ID,
                 'bid': Decimal(data[sym]['lowestAsk']),
                 'ask': Decimal(data[sym]['highestBid'])
-            }
+                }
 
     def l2_book(self, symbol: str, retry=None, retry_wait=0):
         sym = pair_std_to_exchange(symbol, self.ID)
         data = self._get("returnOrderBook", {'currencyPair': sym}, retry=retry, retry_wait=retry_wait)
         return {
-                BID: sd({
+            BID: sd({
                     Decimal(u[0]): Decimal(u[1])
                     for u in data['bids']
-                }),
-                ASK: sd({
+                    }),
+            ASK: sd({
                     Decimal(u[0]): Decimal(u[1])
                     for u in data['asks']
-                })
-            }
+                    })
+        }
 
     def _trade_normalize(self, trade, symbol):
         return {
-            'timestamp': trade['date'],
+            'timestamp': pd.Timestamp(trade['date']).timestamp(),
             'pair': pair_exchange_to_std(symbol),
             'id': trade['tradeID'],
             'feed': self.ID,
@@ -196,7 +196,7 @@ class Poloniex(API):
             coin: {
                 'total': Decimal(data[coin]['available']) + Decimal(data[coin]['onOrders']),
                 'available': Decimal(data[coin]['available'])
-            } for coin in data }
+            } for coin in data}
 
     def orders(self):
         payload = {"currencyPair": "all"}

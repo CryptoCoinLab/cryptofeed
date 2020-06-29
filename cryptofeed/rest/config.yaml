@@ -17,3 +17,9 @@ gemini:
 kraken:
     key_id: null
     key_secret: null
+deribit:
+    key_id: null
+    key_secret: null
+ftx:
+    key_id: null
+    key_secret: null

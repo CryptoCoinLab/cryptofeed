@@ -1,11 +1,11 @@
 '''
-Copyright (C) 2017-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2017-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
 '''
 import time
-import json
+from yapic import json
 import hashlib
 import hmac
 import requests
@@ -24,6 +24,7 @@ from cryptofeed.standards import normalize_trading_options, timestamp_normalize
 
 
 REQUEST_LIMIT = 10
+RATE_LIMIT_SLEEP = 0.2
 LOG = logging.getLogger('rest')
 
 
@@ -108,7 +109,7 @@ class Coinbase(API):
         lower = 0
         bound = (upper - lower) // 2
         while True:
-            r =  self._request('GET', f'/products/{symbol}/trades?after={bound}')
+            r = self._request('GET', f'/products/{symbol}/trades?after={bound}')
             if r.status_code == 429:
                 time.sleep(10)
                 continue
@@ -132,7 +133,7 @@ class Coinbase(API):
                 else:
                     upper = bound
                     bound = (upper + lower) // 2
-            time.sleep(0.2)
+            time.sleep(RATE_LIMIT_SLEEP)
 
     def _trade_normalize(self, symbol: str, data: dict) -> dict:
         return {
@@ -160,7 +161,7 @@ class Coinbase(API):
                     limit = 100 - (start_id - end_id)
                     start_id = end_id
                 if limit > 0:
-                    r =  self._request('GET', f'/products/{symbol}/trades?after={start_id}&limit={limit}', retry=retry, retry_wait=retry_wait)
+                    r = self._request('GET', f'/products/{symbol}/trades?after={start_id}&limit={limit}', retry=retry, retry_wait=retry_wait)
                     if r.status_code == 429:
                         time.sleep(10)
                         continue
@@ -192,7 +193,7 @@ class Coinbase(API):
                 'feed': self.ID,
                 'bid': Decimal(data['bid']),
                 'ask': Decimal(data['ask'])
-               }
+                }
 
     def _book(self, symbol: str, level: int, retry, retry_wait):
         return self._request('GET', f'/products/{symbol}/book?level={level}', retry=retry, retry_wait=retry_wait).json()

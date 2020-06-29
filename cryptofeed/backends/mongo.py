@@ -1,65 +1,46 @@
 '''
-Copyright (C) 2017-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2017-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
 '''
-from decimal import Decimal
-
 import motor.motor_asyncio
+import bson
 
-from cryptofeed.defines import BID, ASK
-from cryptofeed.backends._util import book_convert
+from cryptofeed.backends.backend import BackendBookCallback, BackendBookDeltaCallback, BackendFundingCallback, BackendTickerCallback, BackendTradeCallback, BackendOpenInterestCallback
 
 
 class MongoCallback:
-    def __init__(self, db, host='127.0.0.1', port=27017, collection=None, **kwargs):
+    def __init__(self, db, host='127.0.0.1', port=27017, key=None, numeric_type=str, **kwargs):
         self.conn = motor.motor_asyncio.AsyncIOMotorClient(host, port)
         self.db = self.conn[db]
-        self.collection = collection
+        self.numeric_type = numeric_type
+        self.collection = key if key else self.default_key
 
-class TradeMongo(MongoCallback):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.collection is None:
-            self.collection = 'trades'
-
-    async def __call__(self, *, feed: str, pair: str, side: str, amount: Decimal, price: Decimal, order_id=None, timestamp=None):
-        data = {'feed': feed, 'pair': pair, 'id': order_id, 'timestamp': timestamp,
-                'side': side, 'amount': float(amount), 'price': float(price)}
-
-        await self.db[self.collection].insert_one(data)
-
-class FundingMongo(MongoCallback):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.collection is None:
-            self.collection = 'funding'
-
-    async def __call__(self, *, feed, pair, **kwargs):
-        for key in kwargs:
-            if isinstance(kwargs[key], Decimal):
-                kwargs[key] = float(kwargs[key])
-
-        await self.db[self.collection].insert_one(kwargs)
+    async def write(self, feed: str, pair: str, timestamp: float, receipt_timestamp: float, data: dict):
+        d = {'feed': feed, 'pair': pair, 'timestamp': timestamp, 'receipt_timestamp': timestamp, 'delta': data['delta'], 'bid': bson.BSON.encode(data['bid']), 'ask': bson.BSON.encode(data['ask'])}
+        await self.db[self.collection].insert_one(d)
 
 
-class BookMongo(MongoCallback):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.collection is None:
-            self.collection = 'book'
-        self.depth = kwargs.get('depth', None)
-        self.previous = {BID: {}, ASK: {}}
+class TradeMongo(MongoCallback, BackendTradeCallback):
+    default_key = 'trades'
 
-    async def __call__(self, *, feed, pair, book, timestamp):
-        data = {'timestamp': timestamp, 'feed': feed, 'pair': pair, BID: {}, ASK: {}}
-        book_convert(book, data, self.depth)
 
-        if self.depth:
-            if data[BID] == self.previous[BID] and data[ASK] == self.previous[ASK]:
-                return
-            self.previous[ASK] = data[ASK]
-            self.previous[BID] = data[BID]
+class FundingMongo(MongoCallback, BackendFundingCallback):
+    default_key = 'funding'
 
-        await self.db[self.collection].insert_one(data)
+
+class BookMongo(MongoCallback, BackendBookCallback):
+    default_key = 'book'
+
+
+class BookDeltaMongo(MongoCallback, BackendBookDeltaCallback):
+    default_key = 'book'
+
+
+class TickerMongo(MongoCallback, BackendTickerCallback):
+    default_key = 'ticker'
+
+
+class OpenInterestMongo(MongoCallback, BackendOpenInterestCallback):
+    default_key = 'open_interest'

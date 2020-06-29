@@ -1,23 +1,23 @@
 '''
-Copyright (C) 2018-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2018-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
 '''
 import asyncio
 from multiprocessing import Process
-import json
+from yapic import json
 from decimal import Decimal
 
-from cryptofeed.backends.socket import TradeSocket
+from cryptofeed.backends.socket import TradeSocket, BookDeltaSocket, BookSocket
 from cryptofeed import FeedHandler
 from cryptofeed.exchanges import Coinbase
-from cryptofeed.defines import TRADES
+from cryptofeed.defines import TRADES, L2_BOOK, BOOK_DELTA
 
 
 async def reader(reader, writer):
     while True:
-        data = await reader.read(1024)
+        data = await reader.read(1024 * 640)
         message = data.decode()
         # if multiple messages are received back to back,
         # need to make sure they are formatted as if in an array
@@ -39,7 +39,10 @@ async def main():
 
 def writer(addr, port):
     f = FeedHandler()
-    f.add_feed(Coinbase(channels=[TRADES], pairs=['BTC-USD'], callbacks={TRADES: TradeSocket(addr, port=port)}))
+    f.add_feed(Coinbase(channels=[TRADES, L2_BOOK], pairs=['BTC-USD'],
+                        callbacks={TRADES: TradeSocket(addr, port=port),
+                                   L2_BOOK: BookSocket(addr, port=port),
+                                   BOOK_DELTA: BookDeltaSocket(addr, port=port)}))
     f.run()
 
 

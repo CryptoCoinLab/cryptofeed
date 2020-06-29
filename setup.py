@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2017-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2017-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
@@ -21,13 +21,13 @@ except BaseException:
 class Test(TestCommand):
     def run_tests(self):
         import pytest
-        errno = pytest.main([])
+        errno = pytest.main(['tests/'])
         sys.exit(errno)
 
 
 setup(
     name="cryptofeed",
-    version="0.22.1",
+    version="1.5.0",
     author="Bryant Moscon",
     author_email="bmoscon@gmail.com",
     description=("Cryptocurrency feed handler and synthetic NBBO feed"),
@@ -41,8 +41,8 @@ setup(
     cmdclass={'test': Test},
     classifiers=[
         "Development Status :: 4 - Beta",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8"
     ],
     tests_require=["pytest"],
     install_requires=[
@@ -51,15 +51,19 @@ setup(
         "sortedcontainers>=1.5.9",
         "pandas",
         "pyyaml",
-        "aiohttp",
+        "aiohttp==3.6.2",
         "aiodns",
-        "cchardet"
+        "cchardet",
+        "aiofile",
+        'yapic.json>=1.4.3'
     ],
     extras_require={
         'redis': ['aioredis'],
         'arctic': ['arctic'],
         'zmq': ['pyzmq'],
         'mongo': ['motor'],
-        'kafka': ['aiokafka']
+        'kafka': ['aiokafka'],
+        'rabbit': ['aio_pika', 'pika'],
+        'postgres': ['asyncpg']
     },
 )

@@ -1,19 +1,19 @@
 '''
-Copyright (C) 2018-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2018-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
 '''
 import asyncio
 from multiprocessing import Process
-import json
+from yapic import json
 from decimal import Decimal
 import os
 
-from cryptofeed.backends.socket import TradeSocket
+from cryptofeed.backends.socket import TradeSocket, TickerSocket
 from cryptofeed import FeedHandler
 from cryptofeed.exchanges import Coinbase
-from cryptofeed.defines import TRADES
+from cryptofeed.defines import TRADES, TICKER
 
 
 async def reader(reader, writer):
@@ -38,7 +38,8 @@ async def main():
 
 def writer(path):
     f = FeedHandler()
-    f.add_feed(Coinbase(channels=[TRADES], pairs=['BTC-USD'], callbacks={TRADES: TradeSocket(path)}))
+    f.add_feed(Coinbase(channels=[TRADES, TICKER], pairs=['BTC-USD'], callbacks={TRADES: TradeSocket(path), TICKER: TickerSocket(path)}))
+
     f.run()
 
 

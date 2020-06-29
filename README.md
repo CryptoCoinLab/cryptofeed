@@ -1,9 +1,9 @@
 # Cryptocurrency Exchange Feed Handler
 [![License](https://img.shields.io/badge/license-XFree86-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.6+-green.svg)
+![Python](https://img.shields.io/badge/Python-3.7+-green.svg)
 [![Build Status](https://travis-ci.org/bmoscon/cryptofeed.svg?branch=master)](https://travis-ci.org/bmoscon/cryptofeed)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/efa4e0d6e10b41d0b51454d08f7b33b1)](https://www.codacy.com/app/bmoscon/cryptofeed?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=bmoscon/cryptofeed&amp;utm_campaign=Badge_Grade)
 [![PyPi](https://img.shields.io/badge/PyPi-cryptofeed-brightgreen.svg)](https://pypi.python.org/pypi/cryptofeed)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/efa4e0d6e10b41d0b51454d08f7b33b1)](https://www.codacy.com/app/bmoscon/cryptofeed?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=bmoscon/cryptofeed&amp;utm_campaign=Badge_Grade)
 
 Handles multiple cryptocurrency exchange data feeds and returns normalized and standardized results to client registered callbacks for events like trades, book updates, ticker updates, etc. Utilizes websockets when possible, but can also poll data via REST endpoints if a websocket is not provided.
 
@@ -25,27 +25,43 @@ gemini_cb = {TRADES: TradeCallback(trade), L2_BOOK: BookCallback(book)}
 fh.add_feed(Coinbase(pairs=['BTC-USD'], channels=[TICKER], callbacks=ticker_cb)
 fh.add_feed(Bitfinex(pairs=['BTC-USD'], channels=[TICKER], callbacks=ticker_cb)
 fh.add_feed(Poloniex(pairs=['BTC-USDT'], channels=[TRADES], callbacks=trade_cb))
-fh.add_feed(Gemini(pairs=['BTC-USD'], callbacks=gemini_cb)
+fh.add_feed(Gemini(pairs=['BTC-USD', 'ETH-USD'], channels=[TRADES, L2_BOOK], callbacks=gemini_cb)
 
 fh.run()
 ```
 
+To see an example of an application using cryptofeed to aggregate and store cryptocurrency data to a database, please look at [Cryptostore](https://github.com/bmoscon/cryptostore).
+
+
 Supports the following exchanges:
+* Binance
+* Binance US
+* Binance Jersey
+* Binance Futures
+* Bitcoin.com
 * Bitfinex
+* BitMax
+* BitMEX
+* Bitstamp
+* Bittrex
+* Blockchain
+* Bybit
 * Coinbase
-* Poloniex
+* Deribit
+* EXX
+* FTX
+* FTX US
 * Gemini
 * HitBTC
-* Bitstamp
-* BitMEX
-* Kraken
-* Binance
-* EXX
 * Huobi
-* HuobiUS
+* HuobiDM
+* Kraken
+* Kraken Futures
 * OKCoin
 * OKEx
-* Coinbene
+* Poloniex
+* Upbit
+
 
 Also provides a synthetic NBBO (National Best Bid/Offer) feed that aggregates the best bids and asks from the user specified feeds.
 
@@ -77,15 +93,17 @@ Cryptofeed supports the following channels:
 * TICKER
 * VOLUME
 * FUNDING
-* BOOK_DELTA - Subscribed to with L2 or L3 books, receive book deltas rather than the entire book on updates. Full updates will be periodically sent on the L2 or L3 channel. If BOOK_DELTA is enabled, only L2 or L3 book can be enabled, not both. To received both create two `feedhandler` objects. Not all exchanges are supported, as some exchanges send complete books on every update.
-
+* BOOK_DELTA - Subscribed to with L2 or L3 books, receive book deltas rather than the entire book on updates. Full updates will be periodically sent on the L2 or L3 channel. If BOOK_DELTA is enabled, only L2 or L3 book can be enabled, not both. To receive both create two `feedhandler` objects. Not all exchanges are supported, as some exchanges send complete books on every update.
+* *_SWAP (L2/L3 Books, Trades, Ticker) - Swap data on supporting exchanges
+* *_FUTURES (L2/L3 Books, Trades, Ticker) - Futures data on supporting exchanges
+* OPEN_INTEREST - Open interest data
 
 ## Backends
 
 Cryptofeeds supports `backend` callbacks that will write directly to storage or other interfaces
 
 Supported Backends:
-* Redis
+* Redis (Streams and Sorted Sets)
 * [Arctic](https://github.com/manahl/arctic)
 * ZeroMQ
 * UDP Sockets
@@ -93,6 +111,10 @@ Supported Backends:
 * Unix Domain Sockets
 * [InfluxDB](https://github.com/influxdata/influxdb)
 * MongoDB
+* Kafka
+* Elastic Search
+* RabbitMQ
+* Postgres
 
 
 ## Rest API
@@ -111,5 +133,9 @@ Cryptofeed supports some REST interfaces for retrieving historical data and plac
 Continue to build out rest endpoints and standardize exchange interfaces and data
 
 ## Additional Callback Methods / Backends
-* Postgres
-* RabbitMQ
+* Pulsar
+* More ZMQ improvements/options
+
+# Contributing
+Issues and PRs are welcomed. If you'd like to discuss ongoing development please join the [slack](https://join.slack.com/t/cryptofeed-dev/shared_invite/enQtNjY4ODIwODA1MzQ3LTIzMzY3Y2YxMGVhNmQ4YzFhYTc3ODU1MjQ5MDdmY2QyZjdhMGU5ZDFhZDlmMmYzOTUzOTdkYTZiOGUwNGIzYTk)
+

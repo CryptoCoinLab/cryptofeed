@@ -1,58 +1,53 @@
 '''
-Copyright (C) 2017-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2017-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
 '''
-from decimal import Decimal
+from yapic import json
 
 import zmq
 import zmq.asyncio
 
-from cryptofeed.defines import BID, ASK
-from cryptofeed.backends._util import book_convert
+from cryptofeed.backends.backend import BackendBookCallback, BackendBookDeltaCallback, BackendFundingCallback, BackendTickerCallback, BackendTradeCallback, BackendOpenInterestCallback
 
 
 class ZMQCallback:
-    def __init__(self, host='127.0.0.1', port=5555, zmq_type=zmq.PUSH, **kwargs):
+    def __init__(self, host='127.0.0.1', port=5555, numeric_type=float, key=None, dynamic_key=True, **kwargs):
         url = "tcp://{}:{}".format(host, port)
         ctx = zmq.asyncio.Context.instance()
-        self.con = ctx.socket(zmq_type)
-        self.con.bind(url)
+        self.con = ctx.socket(zmq.PUB)
+        self.con.connect(url)
+        self.key = key if key else self.default_key
+        self.numeric_type = numeric_type
+        self.dynamic_key = dynamic_key
+
+    async def write(self, feed: str, pair: str, timestamp: float, receipt_timestamp: float, data: dict):
+        if self.dynamic_key:
+            await self.con.send_string(f'{feed}-{self.key}-{pair} {json.dumps(data)}')
+        else:
+            await self.con.send_string(f'{self.key} {json.dumps(data)}')
 
 
-class TradeZMQ(ZMQCallback):
-    async def __call__(self, *, feed: str, pair: str, side: str, amount: Decimal, price: Decimal, order_id=None, timestamp=None):
-        trade = {'feed': feed, 'pair': pair, 'id': order_id, 'timestamp': timestamp, 'side': side, 'amount': float(amount), 'price': float(price)}
-        data = {'type': 'trade', 'data': trade}
-        await self.con.send_json(data)
+class TradeZMQ(ZMQCallback, BackendTradeCallback):
+    default_key = 'trades'
 
 
-class FundingZMQ(ZMQCallback):
-    async def __call__(self, **kwargs):
-        for key in kwargs:
-            if isinstance(kwargs[key], Decimal):
-                kwargs[key] = float(kwargs[key])
-
-        data = {'type': 'funding', 'data': kwargs}
-        await self.con.send_json(data)
+class TickerZMQ(ZMQCallback, BackendTickerCallback):
+    default_key = 'ticker'
 
 
-class BookZMQ(ZMQCallback):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.depth = kwargs.get('depth', None)
-        self.previous = {BID: {}, ASK: {}}
+class FundingZMQ(ZMQCallback, BackendFundingCallback):
+    default_key = 'funding'
 
-    async def __call__(self, *, feed, pair, book, timestamp):
-        data = {'timestamp': timestamp, BID: {}, ASK: {}}
-        book_convert(book, data, self.depth)
-        upd = {'type': 'book', 'feed': feed, 'pair': pair, 'data': data}
 
-        if self.depth:
-            if upd['data'][BID] == self.previous[BID] and upd['data'][ASK] == self.previous[ASK]:
-                return
-            self.previous[ASK] = upd['data'][ASK]
-            self.previous[BID] = upd['data'][BID]
+class BookZMQ(ZMQCallback, BackendBookCallback):
+    default_key = 'book'
 
-        await self.con.send_json(upd)
+
+class BookDeltaZMQ(ZMQCallback, BackendBookDeltaCallback):
+    default_key = 'book'
+
+
+class OpenInterestZMQ(ZMQCallback, BackendOpenInterestCallback):
+    default_key = 'open_interest'

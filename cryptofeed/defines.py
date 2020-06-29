@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2017-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2017-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
@@ -9,21 +9,35 @@ Defines contains all constant string definitions for Cryptofeed,
 as well as some documentation (in comment form) regarding
 the book definitions and structure
 '''
-BITSTAMP = 'BITSTAMP'
 BITFINEX = 'BITFINEX'
+BITMEX = 'BITMEX'
+BINANCE = 'BINANCE'
+BINANCE_US = 'BINANCE_US'
+BINANCE_JERSEY = 'BINANCE_JERSEY'
+BINANCE_FUTURES = 'BINANCE_FUTURES'
+BITSTAMP = 'BITSTAMP'
+BITTREX = 'BITTREX'
+BLOCKCHAIN = 'BLOCKCHAIN'
+BYBIT = 'BYBIT'
 COINBASE = 'COINBASE'
+COINBENE = 'COINBENE'
+DERIBIT = 'DERIBIT'
+EXX = 'EXX'
+FTX = 'FTX'
+FTX_US = 'FTX_US'
 GEMINI = 'GEMINI'
 HITBTC = 'HITBTC'
-POLONIEX = 'POLONIEX'
-BITMEX = 'BITMEX'
-KRAKEN = 'KRAKEN'
-BINANCE = 'BINANCE'
-EXX = 'EXX'
 HUOBI = 'HUOBI'
-HUOBI_US = 'HUOBI_US'
+HUOBI_DM = 'HUOBI_DM'
+HUOBI_SWAP = 'HUOBI_SWAP'
+KRAKEN = 'KRAKEN'
+KRAKEN_FUTURES = 'KRAKEN_FUTURES'
 OKCOIN = 'OKCOIN'
 OKEX = 'OKEX'
-COINBENE = 'COINBENE'
+POLONIEX = 'POLONIEX'
+BITCOINCOM = 'BITCOINCOM'
+BITMAX = 'BITMAX'
+UPBIT = 'UPBIT'
 
 
 L2_BOOK = 'l2_book'
@@ -33,24 +47,34 @@ TRADES = 'trades'
 TICKER = 'ticker'
 VOLUME = 'volume'
 FUNDING = 'funding'
+OPEN_INTEREST = 'open_interest'
+LIQUIDATIONS = 'liquidations'
 UNSUPPORTED = 'unsupported'
+
 
 L2_BOOK_SWAP = 'l2_book_swap'
 TRADES_SWAP = 'trades_swap'
 TICKER_SWAP = 'ticker_swap'
 
+
+L2_BOOK_FUTURES = 'l2_book_futures'
+TRADES_FUTURES = 'trades_futures'
+TICKER_FUTURES = 'ticker_futures'
+
+
 BUY = 'buy'
 SELL = 'sell'
-
 BID = 'bid'
 ASK = 'ask'
 UND = 'undefined'
+
 
 LIMIT = 'limit'
 MARKET = 'market'
 MAKER_OR_CANCEL = 'maker-or-cancel'
 FILL_OR_KILL = 'fill-or-kill'
 IMMEDIATE_OR_CANCEL = 'immediate-or-cancel'
+
 
 OPEN = 'open'
 PENDING = 'pending'

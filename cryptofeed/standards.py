@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2017-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2017-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
@@ -12,9 +12,11 @@ data channel names
 import logging
 import pandas as pd
 
-from cryptofeed.defines import (L2_BOOK, L3_BOOK, TRADES, TICKER, VOLUME, FUNDING, UNSUPPORTED, BITFINEX, GEMINI,
-                                POLONIEX, HITBTC, BITSTAMP, COINBASE, BITMEX, KRAKEN, BINANCE, EXX, HUOBI, HUOBI_US, OKCOIN,
-                                OKEX, COINBENE, TRADES_SWAP, TICKER_SWAP, L2_BOOK_SWAP, LIMIT, MARKET, FILL_OR_KILL, IMMEDIATE_OR_CANCEL, MAKER_OR_CANCEL)
+from cryptofeed.defines import (L2_BOOK, L3_BOOK, TRADES, TICKER, OPEN_INTEREST, VOLUME, FUNDING, LIQUIDATIONS, UNSUPPORTED, BITFINEX, GEMINI, BITMAX,
+                                POLONIEX, HITBTC, BITSTAMP, COINBASE, BITMEX, KRAKEN, KRAKEN_FUTURES, BINANCE, EXX, HUOBI, HUOBI_DM, OKCOIN,
+                                OKEX, COINBENE, BYBIT, FTX, FTX_US, TRADES_SWAP, TICKER_SWAP, L2_BOOK_SWAP, TRADES_FUTURES, TICKER_FUTURES, L2_BOOK_FUTURES,
+                                LIMIT, MARKET, FILL_OR_KILL, IMMEDIATE_OR_CANCEL, MAKER_OR_CANCEL, DERIBIT, BITTREX, BITCOINCOM, BINANCE_US,
+                                BINANCE_JERSEY, BINANCE_FUTURES, UPBIT, BLOCKCHAIN)
 from cryptofeed.pairs import gen_pairs
 from cryptofeed.exceptions import UnsupportedTradingPair, UnsupportedDataFeed, UnsupportedTradingOption
 
@@ -27,7 +29,7 @@ _exchange_to_std = {}
 
 
 def load_exchange_pair_mapping(exchange):
-    if exchange == BITMEX:
+    if exchange in {BITMEX, DERIBIT, KRAKEN_FUTURES}:
         return
     mapping = gen_pairs(exchange)
     for std, exch in mapping.items():
@@ -40,7 +42,7 @@ def load_exchange_pair_mapping(exchange):
 
 def pair_std_to_exchange(pair, exchange):
     # bitmex does its own validation of trading pairs dynamically
-    if exchange == BITMEX:
+    if exchange in {BITMEX, DERIBIT, KRAKEN_FUTURES}:
         return pair
     if pair in _std_trading_pairs:
         try:
@@ -64,10 +66,12 @@ def pair_exchange_to_std(pair):
 
 
 def timestamp_normalize(exchange, ts):
-    if exchange in {BITMEX, COINBASE, HITBTC, OKCOIN}:
+    if exchange in {BITMEX, COINBASE, HITBTC, OKCOIN, OKEX, BYBIT, FTX, FTX_US, BITCOINCOM, BLOCKCHAIN}:
         return pd.Timestamp(ts).timestamp()
-    elif exchange in  {HUOBI, BITFINEX, COINBENE}:
+    elif exchange in {HUOBI, HUOBI_DM, BITFINEX, COINBENE, DERIBIT, BINANCE, BINANCE_US, BINANCE_JERSEY, BINANCE_FUTURES, GEMINI, BITTREX, BITMAX, KRAKEN_FUTURES, UPBIT}:
         return ts / 1000.0
+    elif exchange in {BITSTAMP}:
+        return ts / 1000000.0
     return ts
 
 
@@ -77,31 +81,57 @@ _feed_to_exchange_map = {
         POLONIEX: L2_BOOK,
         HITBTC: 'subscribeOrderbook',
         COINBASE: 'level2',
-        BITMEX: 'orderBook10',
-        BITSTAMP: 'order_book',
+        BITMEX: 'orderBookL2',
+        BITSTAMP: 'diff_order_book',
         KRAKEN: 'book',
-        BINANCE: 'depth20',
+        KRAKEN_FUTURES: 'book',
+        BINANCE: 'depth@100ms',
+        BINANCE_US: 'depth@100ms',
+        BINANCE_JERSEY: 'depth@100ms',
+        BINANCE_FUTURES: 'depth@100ms',
+        BLOCKCHAIN: 'l2',
         EXX: 'ENTRUST_ADD',
         HUOBI: 'depth.step0',
-        HUOBI_US: 'depth.step0',
-        OKCOIN: 'spot/depth',
-        OKEX: 'spot/depth',
-        COINBENE: L2_BOOK
+        HUOBI_DM: 'depth.step0',
+        OKCOIN: 'spot/depth_l2_tbt',
+        OKEX: 'spot/depth_l2_tbt',
+        COINBENE: L2_BOOK,
+        DERIBIT: 'book',
+        BYBIT: 'orderBookL2_25',
+        FTX: 'orderbook',
+        FTX_US: 'orderbook',
+        GEMINI: L2_BOOK,
+        BITTREX: 'SubscribeToExchangeDeltas',
+        BITCOINCOM: 'subscribeOrderbook',
+        BITMAX: L2_BOOK,
+        UPBIT: L2_BOOK
     },
     L3_BOOK: {
         BITFINEX: 'book-R0-F0-100',
         BITSTAMP: 'detail_order_book',
         HITBTC: UNSUPPORTED,
         COINBASE: 'full',
-        BITMEX: 'orderBookL2',
+        BITMEX: UNSUPPORTED,
         POLONIEX: UNSUPPORTED,  # supported by specifying a trading pair as the channel,
         KRAKEN: UNSUPPORTED,
+        KRAKEN_FUTURES: UNSUPPORTED,
         BINANCE: UNSUPPORTED,
+        BINANCE_US: UNSUPPORTED,
+        BINANCE_JERSEY: UNSUPPORTED,
+        BINANCE_FUTURES: UNSUPPORTED,
+        BLOCKCHAIN: 'l3',
         EXX: UNSUPPORTED,
         HUOBI: UNSUPPORTED,
-        HUOBI_US: UNSUPPORTED,
+        HUOBI_DM: UNSUPPORTED,
         OKCOIN: UNSUPPORTED,
-        OKEX: UNSUPPORTED
+        OKEX: UNSUPPORTED,
+        BYBIT: UNSUPPORTED,
+        FTX: UNSUPPORTED,
+        FTX_US: UNSUPPORTED,
+        GEMINI: UNSUPPORTED,
+        BITCOINCOM: UNSUPPORTED,
+        BITMAX: UNSUPPORTED,
+        UPBIT: UNSUPPORTED
     },
     TRADES: {
         POLONIEX: TRADES,
@@ -111,13 +141,27 @@ _feed_to_exchange_map = {
         COINBASE: 'matches',
         BITMEX: 'trade',
         KRAKEN: 'trade',
-        BINANCE: 'trade',
+        KRAKEN_FUTURES: 'trade',
+        BINANCE: 'aggTrade',
+        BINANCE_US: 'aggTrade',
+        BINANCE_JERSEY: 'aggTrade',
+        BINANCE_FUTURES: 'aggTrade',
+        BLOCKCHAIN: 'trades',
         EXX: 'TRADE',
         HUOBI: 'trade.detail',
-        HUOBI_US: 'trade.detail',
+        HUOBI_DM: 'trade.detail',
         OKCOIN: 'spot/trade',
         OKEX: 'spot/trade',
-        COINBENE: TRADES
+        COINBENE: TRADES,
+        DERIBIT: 'trades',
+        BYBIT: 'trade',
+        FTX: 'trades',
+        FTX_US: 'trades',
+        GEMINI: TRADES,
+        BITTREX: TRADES,
+        BITCOINCOM: 'subscribeTrades',
+        BITMAX: TRADES,
+        UPBIT: TRADES
     },
     TICKER: {
         POLONIEX: 1002,
@@ -125,21 +169,39 @@ _feed_to_exchange_map = {
         BITFINEX: 'ticker',
         BITSTAMP: UNSUPPORTED,
         COINBASE: 'ticker',
-        BITMEX: UNSUPPORTED,
+        BITMEX: 'quote',
         KRAKEN: TICKER,
+        KRAKEN_FUTURES: 'ticker_lite',
         BINANCE: 'ticker',
+        BINANCE_US: 'ticker',
+        BINANCE_JERSEY: 'ticker',
+        BINANCE_FUTURES: UNSUPPORTED,
+        BLOCKCHAIN: UNSUPPORTED,
         HUOBI: UNSUPPORTED,
-        HUOBI_US: UNSUPPORTED,
+        HUOBI_DM: UNSUPPORTED,
         OKCOIN: 'spot/ticker',
         OKEX: 'spot/ticker',
-        COINBENE: TICKER
+        COINBENE: TICKER,
+        DERIBIT: "ticker",
+        BYBIT: UNSUPPORTED,
+        FTX: "ticker",
+        FTX_US: "ticker",
+        GEMINI: UNSUPPORTED,
+        BITTREX: 'SubscribeToSummaryDeltas',
+        BITCOINCOM: 'subscribeTicker',
+        BITMAX: UNSUPPORTED,
+        UPBIT: UNSUPPORTED
     },
     VOLUME: {
         POLONIEX: 1003
     },
     FUNDING: {
         BITMEX: 'funding',
-        BITFINEX: 'trades'
+        BITFINEX: 'trades',
+        KRAKEN_FUTURES: 'ticker',
+        DERIBIT: 'ticker',
+        OKEX: 'swap/funding_rate',
+        FTX: 'funding'
     },
     TRADES_SWAP: {
         OKEX: 'swap/trade'
@@ -148,7 +210,25 @@ _feed_to_exchange_map = {
         OKEX: 'swap/ticker'
     },
     L2_BOOK_SWAP: {
-        OKEX: 'swap/depth'
+        OKEX: 'swap/depth_l2_tbt'
+    },
+    TRADES_FUTURES: {
+        OKEX: 'futures/trade'
+    },
+    TICKER_FUTURES: {
+        OKEX: 'futures/ticker'
+    },
+    L2_BOOK_FUTURES: {
+        OKEX: 'futures/depth_l2_tbt'
+    },
+    OPEN_INTEREST: {
+        OKEX: 'swap/ticker',
+        BITMEX: 'instrument',
+        KRAKEN_FUTURES: 'ticker',
+        DERIBIT: 'ticker'
+    },
+    LIQUIDATIONS: {
+        BITMEX: 'liquidation'
     }
 }
 
@@ -158,25 +238,29 @@ _exchange_options = {
         KRAKEN: 'limit',
         GEMINI: 'exchange limit',
         POLONIEX: 'limit',
-        COINBASE: 'limit'
+        COINBASE: 'limit',
+        BLOCKCHAIN: 'limit',
     },
     MARKET: {
         KRAKEN: 'market',
         GEMINI: UNSUPPORTED,
         POLONIEX: UNSUPPORTED,
-        COINBASE: 'market'
+        COINBASE: 'market',
+        BLOCKCHAIN: 'market',
     },
     FILL_OR_KILL: {
         GEMINI: 'fill-or-kill',
         POLONIEX: 'fillOrKill',
         COINBASE: {'time_in_force': 'FOK'},
-        KRAKEN: UNSUPPORTED
+        KRAKEN: UNSUPPORTED,
+        BLOCKCHAIN: 'FOK'
     },
     IMMEDIATE_OR_CANCEL: {
         GEMINI: 'immediate-or-cancel',
         POLONIEX: 'immediateOrCancel',
         COINBASE: {'time_in_force': 'IOC'},
-        KRAKEN: UNSUPPORTED
+        KRAKEN: UNSUPPORTED,
+        BLOCKCHAIN: 'IOC'
     },
     MAKER_OR_CANCEL: {
         GEMINI: 'maker-or-cancel',

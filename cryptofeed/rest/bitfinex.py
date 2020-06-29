@@ -1,13 +1,12 @@
 '''
-Copyright (C) 2017-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2017-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
 '''
 import time
 from time import sleep
-from datetime import datetime as dt
-import json
+from yapic import json
 import hashlib
 import hmac
 import logging
@@ -19,17 +18,17 @@ import requests
 
 from cryptofeed.rest.api import API, request_retry
 from cryptofeed.defines import BITFINEX, SELL, BUY, BID, ASK
-from cryptofeed.standards import pair_std_to_exchange, pair_exchange_to_std
+from cryptofeed.standards import pair_std_to_exchange, pair_exchange_to_std, timestamp_normalize
 
 
 REQUEST_LIMIT = 5000
+RATE_LIMIT_SLEEP = 3
 LOG = logging.getLogger('rest')
 
 
 class Bitfinex(API):
     ID = BITFINEX
     api = "https://api-pub.bitfinex.com/v2/"
-
 
     def _get(self, endpoint, retry, retry_wait):
         @request_retry(self.ID, retry, retry_wait)
@@ -62,10 +61,9 @@ class Bitfinex(API):
         else:
             trade_id, timestamp, amount, price = trade
             period = None
-        timestamp = dt.utcfromtimestamp(timestamp / 1000.0).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
 
         ret = {
-            'timestamp': timestamp,
+            'timestamp': timestamp_normalize(self.ID, timestamp),
             'pair': pair_exchange_to_std(symbol),
             'id': trade_id,
             'feed': self.ID,
@@ -130,6 +128,8 @@ class Bitfinex(API):
                 continue
             elif r.status_code != 200:
                 self._handle_error(r, LOG)
+            else:
+                sleep(RATE_LIMIT_SLEEP)
 
             data = r.json()
             if data == []:
@@ -163,7 +163,7 @@ class Bitfinex(API):
                 'feed': self.ID,
                 'bid': Decimal(data[0]),
                 'ask': Decimal(data[2])
-               }
+                }
 
     def funding(self, symbol: str, start=None, end=None, retry=None, retry_wait=10):
         symbol = f"f{symbol}"
@@ -221,7 +221,7 @@ class Bitfinex(API):
                 else:
                     order_id, price, amount = entry
                     update = abs(amount)
-                side = BID if (amount > 0 and funding == False) or (amount < 0 and funding == True)  else ASK
+                side = BID if (amount > 0 and funding == False) or (amount < 0 and funding == True) else ASK
                 if price not in ret[sym][side]:
                     ret[sym][side][price] = {order_id: update}
                 else:
@@ -234,6 +234,6 @@ class Bitfinex(API):
                 else:
                     price, _, amount = entry
                     update = abs(amount)
-                side = BID if (amount > 0 and funding == False) or (amount < 0 and funding == True)  else ASK
+                side = BID if (amount > 0 and funding == False) or (amount < 0 and funding == True) else ASK
                 ret[sym][side][price] = update
         return ret

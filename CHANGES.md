@@ -1,6 +1,122 @@
 ## Changelog
 
-### 0.22.1
+### 1.5.0
+  * Feature: New Exchange - FTX US
+  * Feature: Add funding data to rest library
+  * Bugfix: DSX updated their api, websocket no longer supported. Removing DSX
+  * Feature: Websocket client now uses unbounded message queue
+  * Feature: Support for HuobiDM next quarter contracts
+  * Bugfix: Fix datetime fields in elasticsearch
+
+### 1.4.1 (2020-05-22)
+  * Feature: Support for disabling timeouts on feeds
+  * Bugfix: #224 Ignore newly added trading pairs in Poloniex while running
+  * Feature: New exchange, DSX
+  * Bugfix: Bybit updated their API, websocket subscription to L2 book data needed to be updated
+  * Bugfix: Deribit subscription condensed into a single message to avoid issues with rate limit
+  * Bugfix: Funding interval for bitmex not converted to integer
+  * Bugfix: HuobiSwap missing from feedhandler
+  * Feature: Optional flag on Feed to enable check for crossed books
+  * Feature: Blockchain Exchange
+
+### 1.3.1 (2020-03-17)
+  * Feature: Add missing update detection to orderbooks in Binance
+  * Feature: REST support for FTX
+  * Feature: Added new field, receipt timestamp, to all callbacks. This contains the time the message was received by cryptofeed.
+  * Feature: Upbit Exchange Support
+
+### 1.3.0 (2020-02-11)
+  * Bugfix: Enabling multiple symbols on Bitmex with deltas and max depth configured could cause crashes.
+  * Bugfix: Default open interest callback missing
+  * Change: Mongo backend stores book data in BSON
+  * Feature: Open Interest callbacks added to all backends
+  * Change: Instrument removed in favor of open interest
+  * Bugfix: Huobi feedhandlers not properly setting forced indicator for book updates, breaking deltas
+  * Bugfix: Some kraken futures funding fields not always populated
+  * Feature: Open interest updates for kraken futures
+  * Feature: Open interest updates for Deribit
+  * Bugfix: FTX ticker can have Nones for bid/ask
+  * Feature: InfluxDB 2.0 support
+  * Bugfix: Deribit funding only available on perpetuals
+  * Feature: Enable deltas (with out max depth) on exchanges that do not support them
+
+### 1.2.0 (2020-01-18)
+  * Feature: New exchange: Binance Futures
+  * Feature: New Exchange: Binance Jersey
+  * Feature: Funding data on Kraken Futures
+  * Feature: User defined pair seperator (default still -)
+  * Feature: Postgres backend
+  * Feature: Deribit Funding
+  * Bugfix: Deribit subscriptions using config subscribed to symbols incorrectly
+  * Bugfix: Some RabbitMQ messages were missing symbol and exchange data
+  * Feature: Open interest data for OKEX swaps
+
+### 1.1.0 (2019-11-14)
+  * Feature: User enabled logging of exchange messages on error
+  * Refactor: Overhaul of backends - new base classes and simplified code
+  * Bugfix: Handle i messages from poloniex more correctly
+  * Bugfix: Report bittrex errors correctly
+  * Feature: New exchange: Bitcoin.com
+  * Feature: New exchange: BinanceUS
+  * Feature: New exchange: Bitmax
+  * Feature: Ability to store raw messages from exchanges
+
+### 1.0.1 (2019-09-30)
+  * Feature: Backfill Bitmex historical trade data from S3 Bucket
+  * Feature: RabbitMQ backend
+  * Feature: Custom Depth and deltas for all L2 book updates
+  * Feature: Support new 100ms book diff channel on binance
+  * Feature: Bittrex exchange support
+  * Feature: Ticker support in Redis and Kafka Backends
+  * Feature: Ticker callbacks require/contain timestamp
+  * Feature: Renko Aggregation
+  * Bugfix: Max Depth without deltas should only send updates when book changes
+  * Bugfix: Update count and previous book now associated with pair
+
+### 1.0.0 (2019-08-18)
+  * Bugfix #113: Fix remaining exchanges who are not reporting timestamps correctly
+  * Feature: Generated timestamps now based on message receipt by feedhandler
+  * Feature: Multi-callback support
+  * Feature: Rework ZMQ using pub/sub with topics
+  * Feature: FTX Exchange
+  * Feature: Gemini subscriptions now work like all other exchanges
+  * Feature: Use unique id for each feed (as opposed to feed id/name)
+  * Bugfix: fix Poloniex historical trade timestamps
+  * Bugfix: Bitmex L2 channel incorrectly classified
+  * Feature: Kraken Futures
+  * Feature: Redis backend supports UDS
+  * Feature: Binance full book (L2) with deltas
+  * Feature: Allow user to start event loop themselves (potentially scheduling other tasks before/after).
+
+### 0.25.0 (2019-07-06)
+  * Feature: Rest Endpoints for Historical Deribit data
+  * Feature: Specify numeric datatype for InfluxDB
+  * Bugfix: Greatly improve performance of book writes for InfluxDB
+  * Feature: Bybit exchange support
+  * Bugfix: Deribit now returning floats in decimal.Decimal
+  * Feature: Elastic Search backend
+
+### 0.24.0 (2019-06-19)
+  * Bugfix: Book Delta Conversion issue in backends
+  * Bugfix: Tweak BitMEX rest api to handle more errors more gracefully
+  * Feature: Deribit Exchange support
+  * Feature: Instrument channel
+  * Bugfix: support Kraken websocket API changes
+  * Bugfix: correct USDT symbol mappings for Bitfinex
+  * Bugfix: Fixed mongo book backend
+  * Feature: Book delta support for mongo, sockets, ZMQ
+
+### 0.23.0 (2019-06-03)
+  * Feature: Book delta support for InfluxDB
+  * Feature: Swaps on OkEX
+
+### 0.22.2 (2019-05-23)
+  * Bugfix: Fix tagging issue in InfluxDB
+  * Bugfix: Fix book updates in InfluxDB
+  * Feature: Book delta support in Redis backends
+  * Feature: Book delta support in Kafka backend
+
+### 0.22.1 (2019-05-19)
   * Feature: Cleanup callback code
   * Feature: Poloniex subscription now behaves like other exchanges
   * Feature: Kafka Backend

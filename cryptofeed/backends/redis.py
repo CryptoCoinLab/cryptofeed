@@ -1,138 +1,95 @@
 '''
-Copyright (C) 2017-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2017-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
 '''
-from decimal import Decimal
-import time
-import json
+from yapic import json
 
 import aioredis
 
-from cryptofeed.defines import BID, ASK
-from cryptofeed.backends._util import book_convert, book_flatten
+from cryptofeed.backends.backend import BackendBookCallback, BackendBookDeltaCallback, BackendTickerCallback, BackendTradeCallback, BackendFundingCallback, BackendOpenInterestCallback
 
 
 class RedisCallback:
-    def __init__(self, host='127.0.0.1', port=6379, key=None, **kwargs):
+    def __init__(self, host='127.0.0.1', port=6379, socket=None, key=None, numeric_type=float, **kwargs):
         """
         setting key lets you override the prefix on the
         key used in redis. The defaults are related to the data
         being stored, i.e. trade, funding, etc
         """
-        self.host = host
-        self.port = port
         self.redis = None
-        self.key = key
+        self.key = key if key else self.default_key
+        self.numeric_type = numeric_type
+        self.conn_str = socket if socket else f'redis://{host}:{port}'
 
 
-class TradeRedis(RedisCallback):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.key is None:
-            self.key = 'trades'
-
-    async def __call__(self, *, feed: str, pair: str, side: str, amount: Decimal, price: Decimal, order_id=None, timestamp=None):
+class RedisZSetCallback(RedisCallback):
+    async def write(self, feed: str, pair: str, timestamp: float, receipt_timestamp: float, data: dict):
+        data = json.dumps(data)
         if self.redis is None:
-            self.redis = await aioredis.create_redis_pool(f'redis://{self.host}:{self.port}')
-
-        data = json.dumps({'feed': feed, 'pair': pair, 'id': order_id, 'timestamp': timestamp,
-                           'side': side, 'amount': str(amount), 'price': str(price)})
-
+            self.redis = await aioredis.create_redis_pool(self.conn_str)
         await self.redis.zadd(f"{self.key}-{feed}-{pair}", timestamp, data, exist=self.redis.ZSET_IF_NOT_EXIST)
 
 
-class TradeStream(TradeRedis):
-    async def __call__(self, *, feed: str, pair: str, side: str, amount: Decimal, price: Decimal, order_id=None, timestamp=None):
+class RedisStreamCallback(RedisCallback):
+    async def write(self, feed: str, pair: str, timestamp: float, receipt_timestamp: float, data: dict):
         if self.redis is None:
-            self.redis = await aioredis.create_redis_pool(f'redis://{self.host}:{self.port}')
-
-        data = {'feed': feed, 'pair': pair, 'id': order_id, 'timestamp': timestamp,
-                'side': side, 'amount': str(amount), 'price': str(price)}
-
-        if data['id'] is None:
-            data['id'] = ''
-
+            self.redis = await aioredis.create_redis_pool(self.conn_str)
         await self.redis.xadd(f"{self.key}-{feed}-{pair}", data)
 
 
-class FundingRedis(RedisCallback):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.key is None:
-            self.key = 'funding'
-
-    async def __call__(self, *, feed, pair, **kwargs):
-        if self.redis is None:
-            self.redis = await aioredis.create_redis_pool(f'redis://{self.host}:{self.port}')
-
-        timestamp = kwargs.get('timestamp', None)
-
-        if timestamp is None:
-            timestamp = time.time()
-
-        for key in kwargs:
-            if isinstance(kwargs[key], Decimal):
-                kwargs[key] = str(kwargs[key])
-
-        data = json.dumps(kwargs)
-
-        await self.redis.zadd(f"{self.key}-{feed}-{pair}", timestamp, data, exist=self.redis.ZSET_IF_NOT_EXIST)
+class TradeRedis(RedisZSetCallback, BackendTradeCallback):
+    default_key = 'trades'
 
 
-class FundingStream(FundingRedis):
-    async def __call__(self, *, feed, pair, **kwargs):
-        if self.redis is None:
-            self.redis = await aioredis.create_redis_pool(f'redis://{self.host}:{self.port}')
-
-        for key in kwargs:
-            if isinstance(kwargs[key], Decimal):
-                kwargs[key] = str(kwargs[key])
-
-        await self.redis.xadd(f"{self.key}-{feed}-{pair}", kwargs)
+class TradeStream(RedisStreamCallback, BackendTradeCallback):
+    default_key = 'trades'
 
 
-class BookRedis(RedisCallback):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.key is None:
-            self.key = 'book'
-        self.depth = kwargs.get('depth', None)
-        self.previous = {BID: {}, ASK: {}}
-
-    async def __call__(self, *, feed, pair, book, timestamp):
-        ts = time.time()
-
-        if self.redis is None:
-            self.redis = await aioredis.create_redis_pool(f'redis://{self.host}:{self.port}')
-
-        data = {'timestamp': timestamp, BID: {}, ASK: {}}
-        book_convert(book, data, self.depth)
-
-        if self.depth:
-            if data[BID] == self.previous[BID] and data[ASK] == self.previous[ASK]:
-                return
-            self.previous[ASK] = data[ASK]
-            self.previous[BID] = data[BID]
-
-        data = json.dumps(data)
-        await self.redis.zadd(f"{self.key}-{feed}-{pair}", ts, data, exist=self.redis.ZSET_IF_NOT_EXIST)
+class FundingRedis(RedisZSetCallback, BackendFundingCallback):
+    default_key = 'funding'
 
 
-class BookStream(BookRedis):
-    async def __call__(self, *, feed, pair, book, timestamp):
-        if self.redis is None:
-            self.redis = await aioredis.create_redis_pool(f'redis://{self.host}:{self.port}')
+class FundingStream(RedisStreamCallback, BackendFundingCallback):
+    default_key = 'funding'
 
-        data = {'timestamp': timestamp, BID: {}, ASK: {}}
-        book_convert(book, data, self.depth)
 
-        if self.depth:
-            if data[BID] == self.previous[BID] and data[ASK] == self.previous[ASK]:
-                return
-            self.previous[ASK] = data[ASK]
-            self.previous[BID] = data[BID]
+class BookRedis(RedisZSetCallback, BackendBookCallback):
+    default_key = 'book'
 
-        data = json.dumps(data)
-        await self.redis.xadd(f"{self.key}-{feed}-{pair}", {'data': data})
+
+class BookDeltaRedis(RedisZSetCallback, BackendBookDeltaCallback):
+    default_key = 'book'
+
+
+class BookStream(RedisStreamCallback, BackendBookCallback):
+    default_key = 'book'
+
+    async def write(self, feed: str, pair: str, timestamp: float, receipt_timestamp: float, data: dict):
+        data = {'data': json.dumps(data)}
+        await super().write(feed, pair, timestamp, receipt_timestamp, data)
+
+
+class BookDeltaStream(RedisStreamCallback, BackendBookDeltaCallback):
+    default_key = 'book'
+
+    async def write(self, feed: str, pair: str, timestamp: str, receipt_timestamp: float, data: dict):
+        data = {'data': json.dumps(data)}
+        await super().write(feed, pair, timestamp, receipt_timestamp, data)
+
+
+class TickerRedis(RedisZSetCallback, BackendTickerCallback):
+    default_key = 'ticker'
+
+
+class TickerStream(RedisStreamCallback, BackendTickerCallback):
+    default_key = 'ticker'
+
+
+class OpenInterestRedis(RedisZSetCallback, BackendOpenInterestCallback):
+    default_key = 'open_interest'
+
+
+class OpenInterestStream(RedisStreamCallback, BackendOpenInterestCallback):
+    default_key = 'open_interest'

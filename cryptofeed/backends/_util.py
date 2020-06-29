@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2017-2019  Bryant Moscon - bmoscon@gmail.com
+Copyright (C) 2017-2020  Bryant Moscon - bmoscon@gmail.com
 
 Please see the LICENSE file for the terms and conditions
 associated with this software.
@@ -7,39 +7,47 @@ associated with this software.
 from cryptofeed.defines import BID, ASK
 
 
-def book_convert(book: dict, data: dict, depth: int):
+def book_delta_convert(delta: dict, data: dict, convert=str):
+    for side in (BID, ASK):
+        for entry in delta[side]:
+            if len(entry) == 2:
+                # level 2 updates
+                price, amount = entry
+                data[side][convert(price)] = convert(amount)
+            else:
+                order_id, price, amount = entry
+                price = convert(price)
+                if price in data[side]:
+                    data[side][price][order_id] = convert(amount)
+                else:
+                    data[side][price] = {order_id: convert(amount)}
+
+
+def book_convert(book: dict, data: dict, convert=str):
     """
-    Build depth levels of book into data, converting decimal.Decimal
-    to str. Book will remain unmodified, data will be modified
+    Converting decimal.Decimal to str. Book will remain unmodified,
+    data will be modified
     """
-    count = 0
     for level in book[ASK]:
-        str_level = str(level)
+        _level = convert(level)
         if isinstance(book[ASK][level], dict):
-            data[ASK][str_level] = book[ASK][level]
-            for order in data[ASK][str_level]:
-                data[ASK][str_level][order] = str(data[ASK][str_level][order])
+            data[ASK][_level] = book[ASK][level]
+            for order in data[ASK][_level]:
+                data[ASK][_level][order] = convert(data[ASK][_level][order])
         else:
-            data[ASK][str_level] = str(book[ASK][level])
-        count += 1
-        if depth and count >= depth:
-            break
+            data[ASK][_level] = convert(book[ASK][level])
 
-    count = 0
     for level in reversed(book[BID]):
-        str_level = str(level)
+        _level = convert(level)
         if isinstance(book[BID][level], dict):
-            data[BID][str_level] = book[BID][level]
-            for order in data[BID][str(level)]:
-                data[BID][str_level][order] = str(data[BID][str_level][order])
+            data[BID][_level] = book[BID][level]
+            for order in data[BID][convert(level)]:
+                data[BID][_level][order] = convert(data[BID][_level][order])
         else:
-            data[BID][str_level] = str(book[BID][level])
-        count += 1
-        if depth and count >= depth:
-            break
+            data[BID][_level] = convert(book[BID][level])
 
 
-def book_flatten(book: dict, timestamp: float) -> dict:
+def book_flatten(feed: str, pair: str, book: dict, timestamp: float, delta: str) -> dict:
     """
     takes book and returns a list of dict, where each element in the list
     is a dictionary with a single row of book data.
@@ -57,7 +65,7 @@ def book_flatten(book: dict, timestamp: float) -> dict:
             if isinstance(data, dict):
                 # L3 book
                 for order_id, size in data.items():
-                    ret.append({'side': side, 'price': price, 'size': size, 'order_id': order_id, 'timestamp': timestamp})
+                    ret.append({'feed': feed, 'pair': pair, 'side': side, 'price': price, 'size': size, 'order_id': order_id, 'timestamp': timestamp, 'delta': delta})
             else:
-                ret.append({'side': side, 'price': price, 'size': data, 'timestamp': timestamp})
+                ret.append({'feed': feed, 'pair': pair, 'side': side, 'price': price, 'size': data, 'timestamp': timestamp, 'delta': delta})
     return ret
